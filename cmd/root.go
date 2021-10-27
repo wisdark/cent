@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path"
 
@@ -40,15 +41,29 @@ By xm1k3`,
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
 		pathFlag, _ := cmd.Flags().GetString("path")
-		//name, _ := cmd.Flags().GetString("name")
 		keepfolders, _ := cmd.Flags().GetBool("keepfolders")
 		console, _ := cmd.Flags().GetBool("console")
+		threads, _ := cmd.Flags().GetInt("threads")
 
-		fmt.Println(color.CyanString("cent v0.4 started"))
-		jobs.Start(pathFlag, keepfolders, console)
+		home, err := homedir.Dir()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if _, err := os.Stat(path.Join(home, ".cent.yaml")); os.IsNotExist(err) {
+			fmt.Println(`Run ` + color.YellowString("cent init") + ` to automatically download ` +
+				color.HiCyanString(".cent.yaml") + ` from repo and copy it to ` +
+				color.HiCyanString("$HOME/.cent.yaml"))
+			return
+		}
+
+		fmt.Println(color.CyanString("cent started"))
+		jobs.Start(pathFlag, keepfolders, console, threads)
 		jobs.RemoveEmptyFolders(path.Join(pathFlag))
 		jobs.UpdateRepo(path.Join(pathFlag), true, true, false)
-		fmt.Println(color.CyanString("cent v0.4 finished, you can find all your nuclei-templates in " + pathFlag))
+		jobs.RemoveDuplicates(path.Join(pathFlag), console)
+		fmt.Println(color.YellowString("[!] Removed duplicates"))
+		fmt.Println(color.CyanString("cent finished, you can find all your nuclei-templates in " + pathFlag))
 	},
 }
 
@@ -66,6 +81,7 @@ func init() {
 	rootCmd.Flags().StringP("path", "p", "cent-nuclei-templates", "Root path to save the templates")
 	rootCmd.Flags().BoolP("keepfolders", "k", false, "Keep folders (by default it only saves yaml files)")
 	rootCmd.Flags().BoolP("console", "C", false, "Print console output")
+	rootCmd.Flags().IntP("threads", "t", 10, "Number of threads to use when cloning repositories")
 
 	rootCmd.MarkFlagRequired("name")
 }
