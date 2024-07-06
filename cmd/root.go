@@ -1,5 +1,5 @@
 /*
-Copyright © 2021 xm1k3
+Copyright © 2023 xm1k3
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,7 +53,6 @@ By xm1k3`,
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
 		pathFlag, _ := cmd.Flags().GetString("path")
-		keepfolders, _ := cmd.Flags().GetBool("keepfolders")
 		console, _ := cmd.Flags().GetBool("console")
 		threads, _ := cmd.Flags().GetInt("threads")
 		timeout, _ := cmd.Flags().GetInt("timeout")
@@ -63,7 +62,9 @@ By xm1k3`,
 			log.Fatal(err)
 		}
 
-		if _, err := os.Stat(path.Join(home, ".cent.yaml")); os.IsNotExist(err) {
+		_, errHome := os.Stat(path.Join(home, ".cent.yaml"))
+		_, errDefault := os.Stat(cfgFile)
+		if os.IsNotExist(errHome) && os.IsNotExist(errDefault) {
 			fmt.Println(`Run ` + color.YellowString("cent init") + ` to automatically download ` +
 				color.HiCyanString(".cent.yaml") + ` from repo and copy it to ` +
 				color.HiCyanString("$HOME/.cent.yaml"))
@@ -71,7 +72,8 @@ By xm1k3`,
 		}
 
 		fmt.Println(color.CyanString("cent started"))
-		jobs.Start(pathFlag, keepfolders, console, threads, timeout)
+
+		jobs.Start(pathFlag, console, threads, timeout)
 		jobs.RemoveEmptyFolders(path.Join(pathFlag))
 		jobs.UpdateRepo(path.Join(pathFlag), true, true, false)
 		jobs.RemoveDuplicates(path.Join(pathFlag), console)
@@ -89,10 +91,11 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
+
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.cent.yaml)")
 
 	rootCmd.Flags().StringP("path", "p", "cent-nuclei-templates", "Root path to save the templates")
-	rootCmd.Flags().BoolP("keepfolders", "k", false, "Keep folders (by default it only saves yaml files)")
 	rootCmd.Flags().BoolP("console", "C", false, "Print console output")
 	rootCmd.Flags().IntP("threads", "t", 10, "Number of threads to use when cloning repositories")
 	rootCmd.Flags().IntP("timeout", "T", 2, "timeout in seconds")
